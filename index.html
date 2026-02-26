@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bingo Word Selector</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+    --primary: #2563eb;
+    --success: #4CAF50;
+    --danger: #e53935;
+    --bg: #eef2f7;
+}
+
+body {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.mode-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    margin: 12px auto 0;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid #111;
+    width: fit-content;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+}
+
+.mode-btn {
+    padding: 8px 22px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    background: #d1d5db;
+    color: #555;
+    transition: all 0.2s ease;
+    box-shadow: none;
+    border-radius: 0;
+    transform: none;
+}
+
+.mode-btn:hover:not(:disabled) {
+    transform: none;
+    background: #c5c9d0;
+}
+
+.mode-btn.active {
+    background: var(--primary);
+    color: white;
+}
+
+.mode-btn:first-child,
+.mode-btn:nth-child(2) {
+    border-right: 2px solid #111;
+}
+
+.title-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 6px 0 12px;
+}
+
+h1 {
+    text-align: center;
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.practice-controls {
+    display: none;
+    justify-content: center;
+    gap: 12px;
+    margin: 0 16px 10px;
+    flex-wrap: wrap;
+}
+
+.practice-controls.visible {
+    display: flex;
+}
+
+.main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 0 16px 16px;
+    position: relative;
+}
+
+.grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    gap: 6px;
+    height: 100%;
+}
+
+.cell {
+    background: white;
+    border-radius: 12px;
+    border: 2px solid #111;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 6px;
+    text-align: center;
+    transition: all 0.35s ease;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+}
+
+.cell:hover:not(.selected):not(.counter) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.12);
+}
+
+.word-en {
+    font-weight: 700;
+    font-size: clamp(16px, 2.5vw, 30px);
+    display: none;
+}
+
+.word-jp {
+    font-size: clamp(14px, 2vw, 22px);
+    opacity: 0.75;
+}
+
+.word-jp-only {
+    font-size: clamp(22px, 3.5vw, 38px);
+    font-weight: 700;
+    opacity: 1;
+}
+
+.cell.revealed .word-en {
+    display: block;
+}
+
+.cell.revealed .word-jp {
+    font-size: clamp(14px, 2vw, 22px);
+    font-weight: 400;
+    opacity: 0.75;
+}
+
+.cell.revealed .word-jp-only {
+    font-size: clamp(14px, 2vw, 22px);
+    font-weight: 400;
+    opacity: 0.75;
+}
+
+.selected {
+    background: var(--success);
+    color: white;
+    transform: scale(1.03);
+}
+
+.loser {
+    color: var(--danger);
+}
+
+.counter {
+    background: #e5e7eb;
+    font-weight: 700;
+    font-size: clamp(20px, 3vw, 32px);
+}
+
+.flash {
+    background: #fde68a !important;
+}
+
+@keyframes greenFlash {
+    0%, 100% { background: var(--success); }
+    50% { background: #a7f3a0; }
+}
+
+.selected:not(.revealed) {
+    animation: greenFlash 0.6s ease-in-out infinite;
+    cursor: pointer;
+}
+
+.selected.revealed {
+    animation: none;
+    background: var(--success);
+}
+
+.practice-mode .cell:not(.counter) {
+    cursor: pointer;
+}
+
+.practice-mode .cell .word-en {
+    display: block;
+    font-size: clamp(18px, 2.8vw, 32px);
+}
+
+.practice-mode .cell .word-jp {
+    display: none;
+}
+
+.practice-mode .cell.show-jp {
+    background: #fbbf24;
+    color: #1c1200;
+}
+
+.practice-mode .cell.show-jp .word-en {
+    display: none;
+}
+
+.practice-mode .cell.show-jp .word-jp {
+    display: block;
+    font-size: clamp(22px, 3.5vw, 38px);
+    font-weight: 700;
+    opacity: 1;
+}
+
+.flashcard-overlay {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 16px;
+    right: 16px;
+    bottom: 46px;
+    z-index: 10;
+    align-items: stretch;
+    justify-content: center;
+}
+
+.flashcard-overlay.visible {
+    display: flex;
+}
+
+.fc-card {
+    flex: 1;
+    background: white;
+    border-radius: 16px;
+    border: 2px solid #111;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+    position: relative;
+    transition: background 0.3s ease;
+    overflow: hidden;
+    padding: 70px 80px;
+}
+
+.fc-card.show-jp {
+    background: #fbbf24;
+    color: #1c1200;
+}
+
+.fc-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255,255,255,0.85);
+    border: 2px solid #111;
+    border-radius: 50%;
+    width: 52px;
+    height: 52px;
+    font-size: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    z-index: 2;
+    flex-shrink: 0;
+}
+
+.fc-arrow:hover {
+    background: white;
+    transform: translateY(-50%) scale(1.1);
+}
+
+#fcPrev { left: 14px; }
+#fcNext { right: 14px; }
+
+.fc-word {
+    font-size: 160px;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.15;
+    word-break: break-word;
+    width: 100%;
+    transition: font-size 0.15s ease;
+}
+
+.fc-counter {
+    position: absolute;
+    top: 14px;
+    right: 18px;
+    font-size: clamp(16px, 2.5vw, 24px);
+    font-weight: 700;
+    opacity: 0.6;
+}
+
+.fc-shuffle {
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    background: #6d28d9;
+    color: white;
+    border: 2px solid #111;
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Poppins', sans-serif;
+    box-shadow: 0 3px 8px rgba(109,40,217,0.3);
+    z-index: 2;
+}
+
+.fc-shuffle.shuffled {
+    background: #4c1d95;
+}
+
+.fc-flip-inner {
+    position: absolute;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--danger);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 28px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Poppins', sans-serif;
+    box-shadow: 0 3px 8px rgba(229,57,53,0.35);
+    white-space: nowrap;
+    z-index: 2;
+}
+
+.fc-flip-inner:hover {
+    box-shadow: 0 5px 12px rgba(229,57,53,0.45);
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+button {
+    border: none;
+    padding: 14px 26px;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    font-family: 'Poppins', sans-serif;
+}
+
+#goBtn {
+    background: var(--primary);
+    color: white;
+    font-size: 20px;
+}
+
+#goBtn.reset {
+    background: var(--danger);
+}
+
+#backBtn {
+    background: #d1d5db;
+}
+
+#allEnBtn {
+    background: #0891b2;
+    color: white;
+    font-size: 15px;
+    padding: 10px 18px;
+}
+
+#allJpBtn {
+    background: #d97706;
+    color: white;
+    font-size: 15px;
+    padding: 10px 18px;
+}
+
+#mixedBtn {
+    background: #059669;
+    color: white;
+    font-size: 15px;
+    padding: 10px 18px;
+}
+
+button:hover:not(:disabled):not(.fc-flip-inner):not(.fc-arrow) {
+    transform: translateY(-2px);
+}
+
+button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+
+.modal-content {
+    background: white;
+    padding: 25px;
+    border-radius: 16px;
+    text-align: center;
+    width: 320px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.modal-content p {
+    margin-bottom: 16px;
+    font-size: 15px;
+}
+
+.modal-content .btn-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="mode-toggle">
+    <button class="mode-btn active" id="gameModeBtn">🎲 Bingo Game</button>
+    <button class="mode-btn" id="practiceModeBtn">📖 Practice Mode</button>
+    <button class="mode-btn" id="flashcardModeBtn">🃏 Flashcard Mode</button>
+</div>
+
+<div class="title-row">
+    <h1 id="pageTitle">🎲 Bingo Grade 6 special</h1>
+</div>
+
+<div class="practice-controls" id="practiceControls">
+    <button id="allEnBtn">All English</button>
+    <button id="allJpBtn">全日本語</button>
+    <button id="mixedBtn">🔀 Mixed</button>
+</div>
+
+<div class="main">
+    <div class="grid" id="grid"></div>
+
+    <div class="flashcard-overlay" id="flashcardOverlay">
+        <div class="fc-card" id="fcCard">
+            <button class="fc-shuffle" id="fcShuffle">🔀 Shuffle</button>
+            <button class="fc-arrow" id="fcPrev">◀</button>
+            <div class="fc-word" id="fcWord"></div>
+            <div class="fc-counter" id="fcCounter">1 / 15</div>
+            <button class="fc-flip-inner" id="fcFlipBtn">日本語</button>
+            <button class="fc-arrow" id="fcNext">▶</button>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="backBtn" disabled>↩ Back</button>
+        <button id="goBtn">Go!</button>
+    </div>
+</div>
+
+<div class="modal" id="modal">
+    <div class="modal-content">
+        <p>Reset the game? All progress will be lost.</p>
+        <div class="btn-row">
+            <button id="confirmReset" style="background:#e53935;color:white;">Yes</button>
+            <button id="cancelReset">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="switchModal">
+    <div class="modal-content">
+        <p id="switchModalText">Switch modes?</p>
+        <div class="btn-row">
+            <button id="confirmSwitch" style="background:var(--primary);color:white;">Yes</button>
+            <button id="cancelSwitch">No</button>
+        </div>
+    </div>
+</div>
+
+<canvas id="confetti"></canvas>
+
+<script>
+const WORDS = [
+    {en:"favorite",        jp:"一番好きな"},
+    {en:"color",       jp:"色"},
+    {en:"sport",     jp:"スポーツ"},
+    {en:"food",     jp:"食べ物"},
+    {en:"subject",  jp:"教科"},
+    {en:"animal",  jp:"動物"},
+    {en:"drink",      jp:"飲み物"},
+    {en:"season",     jp:"季節"},
+    {en:"fruit", jp:"フルーツ"},
+    {en:"dessert", jp:"デザート"},
+    {en:"ramen",     jp:"ラーメン"},
+    {en:"insect",    jp:"虫"},
+    {en:"what",   jp:"なに"},
+    {en:"your",    jp:"あなたの"},
+    {en:"my",       jp:"私の"}
+];
+
+let currentMode = "game";
+let selectedWords = [];
+let remainingWords = [...Array(15).keys()];
+let isAnimating = false;
+let pendingMode = null;
+
+let fcOrder = [...Array(15).keys()];
+let fcIndex = 0;
+let fcLangs = Array(15).fill("en");
+let fcShuffled = false;
+
+const grid             = document.getElementById("grid");
+const goBtn            = document.getElementById("goBtn");
+const backBtn          = document.getElementById("backBtn");
+const allEnBtn         = document.getElementById("allEnBtn");
+const allJpBtn         = document.getElementById("allJpBtn");
+const mixedBtn         = document.getElementById("mixedBtn");
+const practiceControls = document.getElementById("practiceControls");
+const modal            = document.getElementById("modal");
+const switchModal      = document.getElementById("switchModal");
+const gameModeBtn      = document.getElementById("gameModeBtn");
+const practiceModeBtn  = document.getElementById("practiceModeBtn");
+const flashcardModeBtn = document.getElementById("flashcardModeBtn");
+const pageTitle        = document.getElementById("pageTitle");
+const flashcardOverlay = document.getElementById("flashcardOverlay");
+const fcCard           = document.getElementById("fcCard");
+const fcWord           = document.getElementById("fcWord");
+const fcCounter        = document.getElementById("fcCounter");
+const fcShuffle        = document.getElementById("fcShuffle");
+const fcPrev           = document.getElementById("fcPrev");
+const fcNext           = document.getElementById("fcNext");
+const fcFlipBtn        = document.getElementById("fcFlipBtn");
+
+const cells = [];
+
+for (let i = 0; i < 16; i++) {
+    const cell = document.createElement("div");
+    cell.classList.add("cell");
+
+    if (i === 15) {
+        cell.classList.add("counter");
+        cell.textContent = "10 / 10";
+    } else {
+        cell.innerHTML = `
+            <div class="word-en">${WORDS[i].en}</div>
+            <div class="word-jp word-jp-only">${WORDS[i].jp}</div>
+        `;
+        cell.addEventListener("click", () => {
+            if (currentMode === "game") {
+                if (cell.classList.contains("selected") && !cell.classList.contains("revealed")) {
+                    cell.classList.add("revealed");
+                }
+            } else if (currentMode === "practice") {
+                cell.classList.toggle("show-jp");
+            }
+        });
+    }
+
+    grid.appendChild(cell);
+    cells.push(cell);
+}
+
+function updateCounter() {
+    cells[15].textContent = `${10 - selectedWords.length} / 10`;
+}
+
+/* ── SMART FONT SCALING ──
+   Phone (either dimension under 500px): flat 48px, stable and consistent.
+   iPad/Mac: full smart scaling from 160px down. ── */
+function fitFCWord() {
+    const isPhone = window.innerWidth < 500 || window.innerHeight < 500;
+
+    if (isPhone) {
+        fcWord.style.fontSize = "48px";
+        return;
+    }
+
+    const MAX_SIZE = 160;
+    const MIN_SIZE = 32;
+    const STEP = 8;
+    const availW = fcCard.clientWidth - 160;
+    const availH = fcCard.clientHeight - 140;
+
+    let size = MAX_SIZE;
+    while (size > MIN_SIZE) {
+        fcWord.style.fontSize = size + "px";
+        if (fcWord.scrollWidth <= availW && fcWord.scrollHeight <= availH) break;
+        size -= STEP;
+    }
+}
+
+function renderFCCard() {
+    const wordIdx = fcOrder[fcIndex];
+    const lang = fcLangs[wordIdx];
+    fcWord.textContent = lang === "en" ? WORDS[wordIdx].en : WORDS[wordIdx].jp;
+    fcCard.classList.toggle("show-jp", lang === "jp");
+    fcCounter.textContent = `${fcIndex + 1} / 15`;
+    fcFlipBtn.textContent = lang === "en" ? "日本語" : "English";
+    requestAnimationFrame(fitFCWord);
+}
+
+function setMode(mode) {
+    currentMode = mode;
+
+    gameModeBtn.classList.remove("active");
+    practiceModeBtn.classList.remove("active");
+    flashcardModeBtn.classList.remove("active");
+
+    practiceControls.classList.remove("visible");
+    flashcardOverlay.classList.remove("visible");
+    goBtn.style.display = "none";
+    backBtn.style.display = "none";
+    grid.classList.remove("practice-mode");
+
+    if (mode === "game") {
+        pageTitle.textContent = "🎲 Bingo Grade 5 Unit 8";
+        gameModeBtn.classList.add("active");
+        goBtn.style.display = "";
+        backBtn.style.display = "";
+        resetGame();
+    } else if (mode === "practice") {
+        pageTitle.textContent = "📖 Practice Mode";
+        practiceModeBtn.classList.add("active");
+        grid.classList.add("practice-mode");
+        practiceControls.classList.add("visible");
+        initPracticeMode();
+    } else if (mode === "flashcard") {
+        pageTitle.textContent = "🃏 Flashcard Mode";
+        flashcardModeBtn.classList.add("active");
+        practiceControls.classList.add("visible");
+        flashcardOverlay.classList.add("visible");
+        initFlashcardMode();
+    }
+}
+
+function initPracticeMode() {
+    cells.forEach((cell, i) => {
+        if (i === 15) return;
+        cell.classList.remove("selected", "loser", "flash", "revealed", "show-jp");
+    });
+    selectedWords = [];
+    remainingWords = [...Array(15).keys()];
+    updateCounter();
+}
+
+function initFlashcardMode() {
+    fcOrder = [...Array(15).keys()];
+    fcIndex = 0;
+    fcLangs = Array(15).fill("en");
+    fcShuffled = false;
+    fcShuffle.classList.remove("shuffled");
+    fcShuffle.textContent = "🔀 Shuffle";
+    renderFCCard();
+}
+
+function resetGame() {
+    selectedWords = [];
+    remainingWords = [...Array(15).keys()];
+    cells.forEach(c => c.classList.remove("selected", "loser", "flash", "revealed", "show-jp"));
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    updateCounter();
+    goBtn.textContent = "Go!";
+    goBtn.classList.remove("reset");
+    backBtn.disabled = true;
+}
+
+gameModeBtn.onclick = () => {
+    if (currentMode === "game") return;
+    pendingMode = "game";
+    document.getElementById("switchModalText").textContent = "Switch to Bingo Game? Current progress will be lost.";
+    switchModal.style.display = "flex";
+};
+
+practiceModeBtn.onclick = () => {
+    if (currentMode === "practice") return;
+    pendingMode = "practice";
+    document.getElementById("switchModalText").textContent = "Switch to Practice Mode? Current progress will be lost.";
+    switchModal.style.display = "flex";
+};
+
+flashcardModeBtn.onclick = () => {
+    if (currentMode === "flashcard") return;
+    if (currentMode === "game") {
+        pendingMode = "flashcard";
+        document.getElementById("switchModalText").textContent = "Switch to Flashcard Mode? The current game will be reset.";
+        switchModal.style.display = "flex";
+    } else {
+        setMode("flashcard");
+    }
+};
+
+document.getElementById("confirmSwitch").onclick = () => {
+    switchModal.style.display = "none";
+    if (pendingMode) setMode(pendingMode);
+    pendingMode = null;
+};
+
+document.getElementById("cancelSwitch").onclick = () => {
+    switchModal.style.display = "none";
+    pendingMode = null;
+};
+
+allEnBtn.onclick = () => {
+    if (currentMode === "practice") {
+        cells.forEach((cell, i) => { if (i !== 15) cell.classList.remove("show-jp"); });
+    } else if (currentMode === "flashcard") {
+        fcLangs = Array(15).fill("en");
+        renderFCCard();
+    }
+};
+
+allJpBtn.onclick = () => {
+    if (currentMode === "practice") {
+        cells.forEach((cell, i) => { if (i !== 15) cell.classList.add("show-jp"); });
+    } else if (currentMode === "flashcard") {
+        fcLangs = Array(15).fill("jp");
+        renderFCCard();
+    }
+};
+
+mixedBtn.onclick = () => {
+    if (currentMode === "practice") {
+        cells.forEach((cell, i) => {
+            if (i === 15) return;
+            cell.classList.toggle("show-jp", Math.random() < 0.5);
+        });
+    } else if (currentMode === "flashcard") {
+        fcLangs = Array(15).fill(null).map(() => Math.random() < 0.5 ? "en" : "jp");
+        renderFCCard();
+    }
+};
+
+fcFlipBtn.onclick = () => {
+    const wordIdx = fcOrder[fcIndex];
+    fcLangs[wordIdx] = fcLangs[wordIdx] === "en" ? "jp" : "en";
+    renderFCCard();
+};
+
+fcPrev.onclick = () => {
+    if (fcIndex > 0) { fcIndex--; renderFCCard(); }
+};
+
+fcNext.onclick = () => {
+    if (fcIndex < 14) { fcIndex++; renderFCCard(); }
+};
+
+fcShuffle.onclick = () => {
+    if (!fcShuffled) {
+        for (let i = fcOrder.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [fcOrder[i], fcOrder[j]] = [fcOrder[j], fcOrder[i]];
+        }
+        fcShuffled = true;
+        fcShuffle.classList.add("shuffled");
+        fcShuffle.textContent = "✓ Shuffled";
+    } else {
+        fcOrder = [...Array(15).keys()];
+        fcShuffled = false;
+        fcShuffle.classList.remove("shuffled");
+        fcShuffle.textContent = "🔀 Shuffle";
+    }
+    fcIndex = 0;
+    renderFCCard();
+};
+
+/* ── SOUND — try/catch kept as good practice ── */
+let ctxAudio = null;
+try {
+    ctxAudio = new (window.AudioContext || window.webkitAudioContext)();
+} catch(e) {}
+
+function tick() {
+    if (!ctxAudio) return;
+    try {
+        const o = ctxAudio.createOscillator();
+        const g = ctxAudio.createGain();
+        o.frequency.value = 800;
+        g.gain.value = 0.05;
+        o.connect(g); g.connect(ctxAudio.destination);
+        o.start(); o.stop(ctxAudio.currentTime + 0.05);
+    } catch(e) {}
+}
+
+function winSound() {
+    if (!ctxAudio) return;
+    try {
+        const o = ctxAudio.createOscillator();
+        const g = ctxAudio.createGain();
+        o.type = "triangle";
+        o.frequency.setValueAtTime(400, ctxAudio.currentTime);
+        o.frequency.linearRampToValueAtTime(900, ctxAudio.currentTime + 0.3);
+        g.gain.value = 0.1;
+        o.connect(g); g.connect(ctxAudio.destination);
+        o.start(); o.stop(ctxAudio.currentTime + 0.4);
+    } catch(e) {}
+}
+
+const canvas = document.getElementById("confetti");
+const ctx = canvas.getContext("2d");
+canvas.width = innerWidth;
+canvas.height = innerHeight;
+
+function confettiBurst() {
+    let pieces = Array.from({length: 120}, () => ({
+        x: Math.random() * canvas.width,
+        y: -10,
+        size: Math.random() * 6 + 3,
+        speed: Math.random() * 3 + 2,
+        color: `hsl(${Math.random() * 360},100%,50%)`
+    }));
+    let frame = 0;
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        pieces.forEach(p => {
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x, p.y, p.size, p.size);
+            p.y += p.speed;
+        });
+        if (frame++ < 100) requestAnimationFrame(draw);
+    }
+    draw();
+}
+
+goBtn.onclick = () => {
+    if (isAnimating) return;
+
+    if (selectedWords.length === 10) {
+        modal.style.display = "flex";
+        return;
+    }
+
+    isAnimating = true;
+    goBtn.disabled = true;
+    backBtn.disabled = true;
+
+    const interval = setInterval(() => {
+        remainingWords.forEach(i => cells[i].classList.remove("flash"));
+        const r = remainingWords[Math.floor(Math.random() * remainingWords.length)];
+        cells[r].classList.add("flash");
+        tick();
+    }, 100);
+
+    setTimeout(() => {
+        clearInterval(interval);
+        remainingWords.forEach(i => cells[i].classList.remove("flash"));
+
+        const chosen = remainingWords[Math.floor(Math.random() * remainingWords.length)];
+        cells[chosen].classList.add("selected");
+
+        selectedWords.push(chosen);
+        remainingWords = remainingWords.filter(i => i !== chosen);
+
+        updateCounter();
+        winSound();
+
+        if (selectedWords.length === 10) {
+            remainingWords.forEach(i => cells[i].classList.add("loser"));
+            goBtn.textContent = "Reset";
+            goBtn.classList.add("reset");
+            confettiBurst();
+        }
+
+        isAnimating = false;
+        goBtn.disabled = false;
+        backBtn.disabled = selectedWords.length === 0;
+
+    }, 3000);
+};
+
+backBtn.onclick = () => {
+    if (isAnimating || selectedWords.length === 0) return;
+
+    const last = selectedWords.pop();
+    remainingWords.push(last);
+    cells[last].classList.remove("selected", "loser", "revealed");
+
+    updateCounter();
+
+    if (selectedWords.length < 10) {
+        remainingWords.forEach(i => cells[i].classList.remove("loser"));
+        goBtn.textContent = "Go!";
+        goBtn.classList.remove("reset");
+    }
+
+    backBtn.disabled = selectedWords.length === 0;
+};
+
+document.getElementById("confirmReset").onclick = () => {
+    modal.style.display = "none";
+    resetGame();
+};
+
+document.getElementById("cancelReset").onclick = () => modal.style.display = "none";
+
+window.onclick = e => {
+    if (e.target === modal) modal.style.display = "none";
+    if (e.target === switchModal) switchModal.style.display = "none";
+};
+
+window.addEventListener("resize", () => {
+    if (currentMode === "flashcard") fitFCWord();
+});
+</script>
+
+</body>
+</html>
